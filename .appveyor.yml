@@ -1,0 +1,31 @@
+image: Visual Studio 2019
+
+platform:
+  - x64
+  - Win32
+
+branches:
+  only:
+    - capemon
+
+configuration:
+  - Release
+
+environment:
+  projName: $(APPVEYOR_PROJECT_SLUG)
+  artifactName: $(APPVEYOR_PROJECT_NAME)-$(APPVEYOR_REPO_COMMIT)-$(PLATFORM)
+  SOLUTION_FILE_PATH: capemon.sln
+
+before_build:
+  - nuget restore %SOLUTION_FILE_PATH%
+
+build_script:
+  - msbuild /m /p:Configuration=%CONFIGURATION% /p:Platform=%PLATFORM% %SOLUTION_FILE_PATH%
+
+after_build:
+  - mkdir C:\projects\%projName%\install_bin\%artifactName%
+  - if "%PLATFORM%"=="x64" ( copy x64\Release\capemon_x64.dll C:\projects\%projName%\install_bin\%artifactName%\capemon_x64.dll )
+  - if "%PLATFORM%"=="Win32" ( copy Release\capemon.dll C:\projects\%projName%\install_bin\%artifactName%\capemon.dll )
+
+artifacts:
+  - path: install_bin\%artifactName%
