@@ -44,6 +44,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 char *our_process_path;
 char *our_process_name;
+char* our_process_digest;
 char *our_dll_path;
 wchar_t *our_process_path_w;
 wchar_t *our_dll_path_w;
@@ -498,6 +499,47 @@ void get_our_process_path(void)
 	our_process_name = get_exe_basename(our_process_path);
 
 	free(tmp);
+}
+
+void get_our_process_digest(void)
+{
+	our_process_digest = calloc(1, 33); // MD5_LEN * 2  + 1
+
+	HANDLE hFile = CreateFileA(
+		our_process_path,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+		return;
+
+	DWORD fileSize = GetFileSize(hFile, NULL);
+	if (fileSize == INVALID_FILE_SIZE)
+	{
+		CloseHandle(hFile);
+		return;
+	}
+
+	unsigned char* fileContent = (unsigned char*)calloc(1, fileSize);
+	if (!fileContent)
+	{
+		CloseHandle(hFile);
+		return;
+	}
+
+	DWORD bytesRead = 0;
+	if (ReadFile(hFile, fileContent, fileSize, &bytesRead, NULL) && bytesRead == fileSize)
+	{
+		GetHash(fileContent, bytesRead, our_process_digest);
+	}
+
+	free(fileContent);
+	CloseHandle(hFile);
 }
 
 void get_our_dll_path(void)
