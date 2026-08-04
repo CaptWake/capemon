@@ -1033,6 +1033,16 @@ HOOKDEF(BOOL, WINAPI, Module32NextW,
 	__out LPMODULEENTRY32W lpme
 );
 
+HOOKDEF(BOOL, WINAPI, Thread32First,
+	__in HANDLE hSnapshot,
+	__out LPTHREADENTRY32 lpme
+);
+
+HOOKDEF(BOOL, WINAPI, Thread32Next,
+	__in HANDLE hSnapshot,
+	__out LPTHREADENTRY32 lpme
+);
+
 HOOKDEF(BOOL, WINAPI, K32EnumProcesses,
 	_Out_writes_bytes_(cb)	DWORD*	lpidProcess,
 	_In_					DWORD	cb,
@@ -1143,6 +1153,15 @@ HOOKDEF(NTSTATUS, WINAPI,  RtlReportSilentProcessExit,
 
 HOOKDEF(NTSTATUS, WINAPI, NtResumeProcess,
 	__in  HANDLE ProcessHandle
+);
+
+HOOKDEF(NTSTATUS, WINAPI, NtAdjustPrivilegesToken,
+    IN HANDLE               TokenHandle,
+    IN BOOLEAN              DisableAllPrivileges,
+    IN PTOKEN_PRIVILEGES    NewState OPTIONAL,
+    IN ULONG                BufferLength,
+    OUT PTOKEN_PRIVILEGES   PreviousState OPTIONAL,
+    OUT PULONG              ReturnLength OPTIONAL
 );
 
 HOOKDEF(NTSTATUS, WINAPI, NtCreateSection,
@@ -3426,6 +3445,23 @@ HOOKDEF(SECURITY_STATUS, WINAPI, NCryptOpenKey,
 	DWORD dwFlags
 );
 
+HOOKDEF(BOOLEAN, WINAPI, SystemFunction036,
+	_Out_ PVOID RandomBuffer,
+	_In_  ULONG RandomBufferLength
+);
+
+HOOKDEF(NTSTATUS, WINAPI, SystemFunction040,
+	_Inout_ PVOID  Memory,
+	_In_    ULONG  MemorySize,
+	_In_    ULONG  OptionFlags
+);
+
+HOOKDEF(NTSTATUS, WINAPI, SystemFunction041,
+    _Inout_ PVOID  Memory,
+    _In_    ULONG  MemorySize,
+    _In_    ULONG  OptionFlags
+);
+
 //
 // Special Hooks
 //
@@ -3858,26 +3894,6 @@ HOOKDEF(HRESULT, WINAPI, IsValidURL,
 	_In_       LPBC    pBC,
 	_In_       LPCWSTR szURL,
 	_Reserved_ DWORD   dwReserved
-);
-
-HOOKDEF(int, WINAPI, MultiByteToWideChar,
-	__in		UINT	CodePage,
-	__in		DWORD	dwFlags,
-	__in		LPCCH	lpMultiByteStr,
-	__in		int		cbMultiByte,
-	__out_opt	LPWSTR	lpWideCharStr,
-	__in		int		cchWideChar
-);
-
-HOOKDEF(int, WINAPI, WideCharToMultiByte,
-	__in		UINT	CodePage,
-	__in		DWORD	dwFlags,
-	__in		LPCWCH	lpWideCharStr,
-	__in		int		cchWideChar,
-	__out_opt	LPSTR	lpMultiByteStr,
-	__in		int		cbMultiByte,
-	__in_opt	LPCCH	lpDefaultChar,
-	__out_opt	LPBOOL	lpUsedDefaultChar
 );
 
 HOOKDEF(LPSTR, WINAPI, GetCommandLineA,
