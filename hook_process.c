@@ -42,6 +42,7 @@ extern void ProtectionHandler(PVOID BaseAddress, ULONG Protect, PULONG OldProtec
 extern void FreeHandler(PVOID BaseAddress), ProcessMessage(DWORD ProcessId, DWORD ThreadId);
 extern void ProcessTrackedRegion(), DebuggerShutdown(), DumpStrings();
 extern LONG WINAPI mini_handler(__in struct _EXCEPTION_POINTERS *ExceptionInfo);
+extern BOOLEAN is_monitor_thread(DWORD tid);
 extern BOOL dll_is_hooked(const wchar_t *library);
 extern BOOL CAPEExceptionDispatcher(PEXCEPTION_RECORD ExceptionRecord, PCONTEXT Context);
 extern void file_handle_terminate();
@@ -99,6 +100,20 @@ HOOKDEF(BOOL, WINAPI, Process32FirstW,
 	return ret;
 }
 
+HOOKDEF(BOOL, WINAPI, Module32FirstW,
+	__in HANDLE hSnapshot,
+	__out LPMODULEENTRY32W lpme
+	) {
+	BOOL ret = Old_Module32FirstW(hSnapshot, lpme);
+
+	if (ret)
+		LOQ_bool("process", "uii", "ModuleName", lpme->szModule, "ModuleID", lpme->th32ModuleID, "ProcessId", lpme->th32ProcessID);
+	else
+		LOQ_bool("process", "");
+
+	return ret;
+}
+
 HOOKDEF(BOOL, WINAPI, Module32NextW,
 	__in HANDLE hSnapshot,
 	__out LPMODULEENTRY32W lpme
@@ -113,16 +128,44 @@ HOOKDEF(BOOL, WINAPI, Module32NextW,
 	return ret;
 }
 
-HOOKDEF(BOOL, WINAPI, Module32FirstW,
+HOOKDEF(BOOL, WINAPI, Thread32Next,
 	__in HANDLE hSnapshot,
-	__out LPMODULEENTRY32W lpme
-	) {
-	BOOL ret = Old_Module32FirstW(hSnapshot, lpme);
+	__out LPTHREADENTRY32 lpte
+) {
+	BOOL ret = Old_Thread32Next(hSnapshot, lpte);
 
 	if (ret)
-		LOQ_bool("process", "uii", "ModuleName", lpme->szModule, "ModuleID", lpme->th32ModuleID, "ProcessId", lpme->th32ProcessID);
+		LOQ_bool("process", "ii", "ThreadID", lpte->th32ThreadID, "ProcessId", lpte->th32OwnerProcessID);
 	else
 		LOQ_bool("process", "");
+
+	// ignore our own threads
+	if (ret && lpte && lpte->th32OwnerProcessID && GetCurrentProcessId() == lpte->th32OwnerProcessID && lpte->th32ThreadID && is_monitor_thread(lpte->th32ThreadID)) {
+		do {
+			ret = Old_Thread32Next(hSnapshot, lpte);
+		} while (ret && lpte && GetCurrentProcessId() == lpte->th32OwnerProcessID && is_monitor_thread(lpte->th32ThreadID));
+	}
+
+	return ret;
+}
+
+HOOKDEF(BOOL, WINAPI, Thread32First,
+	__in HANDLE hSnapshot,
+	__out LPTHREADENTRY32 lpte
+) {
+	BOOL ret = Old_Thread32First(hSnapshot, lpte);
+
+	if (ret)
+		LOQ_bool("process", "ii", "ThreadID", lpte->th32ThreadID, "ProcessId", lpte->th32OwnerProcessID);
+	else
+		LOQ_bool("process", "");
+
+	// ignore our own threads
+	if (ret && lpte && lpte->th32OwnerProcessID && GetCurrentProcessId() == lpte->th32OwnerProcessID && lpte->th32ThreadID && is_monitor_thread(lpte->th32ThreadID)) {
+		do {
+			ret = Old_Thread32Next(hSnapshot, lpte);
+		} while (ret && lpte && GetCurrentProcessId() == lpte->th32OwnerProcessID && is_monitor_thread(lpte->th32ThreadID));
+	}
 
 	return ret;
 }
@@ -621,6 +664,34 @@ HOOKDEF(NTSTATUS, WINAPI, NtResumeProcess,
 	ret = Old_NtResumeProcess(ProcessHandle);
 	LOQ_ntstatus("process", "pl", "ProcessHandle", ProcessHandle, "ProcessId", pid);
 	return ret;
+}
+
+HOOKDEF(NTSTATUS, WINAPI, NtAdjustPrivilegesToken,
+    IN HANDLE               TokenHandle,
+    IN BOOLEAN              DisableAllPrivileges,
+    IN PTOKEN_PRIVILEGES    NewState OPTIONAL,
+    IN ULONG                BufferLength,
+    OUT PTOKEN_PRIVILEGES   PreviousState OPTIONAL,
+    OUT PULONG              ReturnLength OPTIONAL
+) {
+    char privnames[512] = "";
+    if (NewState && NewState->PrivilegeCount) {
+        for (DWORD i = 0; i < NewState->PrivilegeCount; i++) {
+            char name[64] = "";
+            DWORD nameLen = sizeof(name);
+            if (LookupPrivilegeNameA(NULL, &NewState->Privileges[i].Luid, name, &nameLen)) {
+                if (i > 0)
+                    strncat(privnames, ",", sizeof(privnames) - strlen(privnames) - 1);
+                strncat(privnames, name, sizeof(privnames) - strlen(privnames) - 1);
+            }
+        }
+    }
+
+    NTSTATUS ret = Old_NtAdjustPrivilegesToken(TokenHandle, DisableAllPrivileges, NewState, BufferLength, PreviousState, ReturnLength);
+
+    LOQ_ntstatus("process", "hiis", "TokenHandle", TokenHandle, "DisableAllPrivileges", DisableAllPrivileges, "PrivilegeCount", NewState ? NewState->PrivilegeCount : 0, "Privileges", privnames);
+
+    return ret;
 }
 
 int process_shutting_down;

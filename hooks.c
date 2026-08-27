@@ -129,6 +129,7 @@ hook_t full_hooks[] = {
 	HOOK(ntdll, NtUnmapViewOfSection),
 	HOOK(ntdll, NtUnmapViewOfSectionEx),
 	HOOK(ntdll, NtOpenProcessToken),
+	HOOK(ntdll, NtAdjustPrivilegesToken),
 	HOOK(ntdll, NtQueryInformationToken),
 	HOOK(kernel32, WaitForDebugEvent),
 	HOOK(ntdll, DbgUiWaitStateChange),
@@ -139,6 +140,8 @@ hook_t full_hooks[] = {
 	HOOK(kernel32, Process32NextW),
 	HOOK(kernel32, Module32FirstW),
 	HOOK(kernel32, Module32NextW),
+	HOOK(kernel32, Thread32First),
+	HOOK(kernel32, Thread32Next),
 	HOOK(kernelbase, K32EnumProcesses),
 	HOOK(wtsapi32, WTSEnumerateProcessesW),
 	HOOK(wtsapi32, WTSEnumerateProcessesExW),
@@ -405,6 +408,8 @@ hook_t full_hooks[] = {
 	HOOK(ntdll, LdrGetProcedureAddress),
 	HOOK(ntdll, LdrGetProcedureAddressForCaller),
 	HOOK(kernel32, DeviceIoControl),
+	HOOK(kernel32, GetSystemFirmwareTable),
+	HOOK(kernel32, EnumSystemFirmwareTables),
 	HOOK_NOTAIL(ntdll, NtShutdownSystem, 1),
 	HOOK_NOTAIL(ntdll, NtSetSystemPowerState, 3),
 	HOOK_NOTAIL(user32, ExitWindowsEx, 2),
@@ -461,6 +466,7 @@ hook_t full_hooks[] = {
 	HOOK(oleaut32, VarBstrCat),
 	HOOK_NOTAIL(usp10, ScriptIsComplex, 3),
 	HOOK_NOTAIL(inseng,DownloadFile,3),
+	HOOK(imagehlp, MapFileAndCheckSumA),
 #ifndef _WIN64
 	HOOK(ntdll, RtlDosPathNameToNtPathName_U),
 	HOOK(ntdll, NtQueryLicenseValue),
@@ -561,6 +567,8 @@ hook_t full_hooks[] = {
 	HOOK(ncrypt, SslDecryptPacket),
 	HOOK(iphlpapi, GetAdaptersAddresses),
 	HOOK(iphlpapi, GetAdaptersInfo),
+	HOOK(iphlpapi, IcmpSendEcho),
+	HOOK(iphlpapi, IcmpSendEcho2),
 	HOOK(urlmon, CoInternetSetFeatureEnabled),
 	HOOK(ole32, MkParseDisplayName),
 	HOOK(urlmon, MkParseDisplayNameEx),
@@ -587,10 +595,38 @@ hook_t full_hooks[] = {
 	HOOK(sechost, ControlService),
 	HOOK(sechost, DeleteService),
 
+	// Trace Hooks
+	HOOK(sechost, CloseTrace),
+	HOOK(sechost, ControlTraceA),
+	HOOK(sechost, ControlTraceW),
+	HOOK(advapi32, EnableTrace),
+	HOOK(advapi32, EnableTraceEx),
+	HOOK(sechost, EnableTraceEx2),
+	HOOK(sechost, OpenTraceA),
+	HOOK(sechost, OpenTraceW),
+	HOOK(sechost, QueryAllTracesA),
+	HOOK(sechost, QueryAllTracesW),
+	HOOK(advapi32, QueryTraceA),
+	HOOK(advapi32, QueryTraceW),
+	HOOK(sechost, StartTraceA),
+	HOOK(sechost, StartTraceW),
+	HOOK(sechost, StopTraceA),
+	HOOK(sechost, StopTraceW),
+	HOOK(advapi32, UpdateTraceA),
+	HOOK(advapi32, UpdateTraceW),
+	HOOK(advapi32, CveEventWrite),
+	HOOK(sechost, EventAccessControl),
+	HOOK(advapi32, EventAccessQuery),
+	HOOK(sechost, EventAccessRemove),
+	HOOK(advapi32, EventRegister),
+	HOOK(advapi32, EventSetInformation),
+	HOOK(advapi32, EventUnregister),
+
 	// Sleep Hooks
 	HOOK(ntdll, NtQueryPerformanceCounter),
 	HOOK(ntdll, NtDelayExecution),
 	HOOK(ntdll, NtWaitForSingleObject),
+	HOOK(ntdll, NtWaitForMultipleObjects),
 	HOOK_SPECIAL(kernel32, GetLocalTime),
 	HOOK_SPECIAL(kernel32, GetSystemTime),
 	HOOK_SPECIAL(kernel32, GetSystemTimeAsFileTime),
@@ -712,6 +748,9 @@ hook_t full_hooks[] = {
 	HOOK(ncrypt, NCryptCreatePersistedKey),
 	HOOK(ncrypt, NCryptFinalizeKey),
 	HOOK(ncrypt, NCryptOpenKey),
+	HOOK(cryptbase, SystemFunction036),
+	HOOK(cryptbase, SystemFunction040),
+	HOOK(cryptbase, SystemFunction041),
 
 	// wintrust
 	HOOK(wintrust, HTTPSCertificateTrust),
@@ -994,6 +1033,7 @@ hook_t native_hooks[] = {
 	HOOK(ntdll, NtQueryPerformanceCounter),
 	HOOK(ntdll, NtDelayExecution),
 	HOOK(ntdll, NtWaitForSingleObject),
+	HOOK(ntdll, NtWaitForMultipleObjects),
 	HOOK_SPECIAL(ntdll, NtQuerySystemTime),
 	HOOK(ntdll, NtSetTimer),
 	HOOK(ntdll, NtSetTimerEx),
@@ -1372,6 +1412,8 @@ hook_t office_hooks[] = {
 	HOOK(ntdll, LdrGetProcedureAddress),
 	HOOK(ntdll, LdrGetProcedureAddressForCaller),
 	HOOK(kernel32, DeviceIoControl),
+	HOOK(kernel32, GetSystemFirmwareTable),
+	HOOK(kernel32, EnumSystemFirmwareTables),
 	HOOK_NOTAIL(ntdll, NtShutdownSystem, 1),
 	HOOK_NOTAIL(ntdll, NtSetSystemPowerState, 3),
 	HOOK_NOTAIL(user32, ExitWindowsEx, 2),
@@ -1519,6 +1561,8 @@ hook_t office_hooks[] = {
 	HOOK(ncrypt, SslDecryptPacket),
 	HOOK(iphlpapi, GetAdaptersAddresses),
 	HOOK(iphlpapi, GetAdaptersInfo),
+	HOOK(iphlpapi, IcmpSendEcho),
+	HOOK(iphlpapi, IcmpSendEcho2),
 	HOOK(urlmon, CoInternetSetFeatureEnabled),
 
 	// Service Hooks
@@ -1537,6 +1581,7 @@ hook_t office_hooks[] = {
 	HOOK(ntdll, NtQueryPerformanceCounter),
 	HOOK(ntdll, NtDelayExecution),
 	HOOK(ntdll, NtWaitForSingleObject),
+	HOOK(ntdll, NtWaitForMultipleObjects),
 	HOOK_SPECIAL(kernel32, GetLocalTime),
 	HOOK_SPECIAL(kernel32, GetSystemTime),
 	HOOK_SPECIAL(kernel32, GetSystemTimeAsFileTime),
@@ -2064,9 +2109,9 @@ void set_hooks()
 			break;
 
 		if (g_config.hook_range)
-			DebugOutput("set_hooks: Hooking %s", (hooks+i)->funcname);
+			DebugOutput("set_hooks: Hooking %ws::%s", (hooks+i)->library, (hooks+i)->funcname);
 		if (hook_api(hooks+i, g_config.hook_type) < 0)
-			DebugOutput("set_hooks: Unable to hook %s", (hooks+i)->funcname);
+			DebugOutput("set_hooks: Unable to hook %ws::%s", (hooks+i)->library, (hooks+i)->funcname);
 		else
 			Hooked++;
 	}
