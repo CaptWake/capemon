@@ -714,8 +714,6 @@ int hook_api(hook_t *h, int type)
 				addr = exportaddr;
 				if  (!wcscmp(h->library, L"clrjit"))
 					DebugOutput("hook_api: clrjit::%s export address 0x%p obtained via GetFunctionAddress\n", h->funcname, addr);
-				else
-					DebugOutput("hook_api: %s export address 0x%p obtained via GetFunctionAddress\n", h->funcname, addr);
 			}
 		}
 	}
@@ -933,7 +931,12 @@ int operate_on_backtrace(ULONG_PTR _esp, ULONG_PTR _ebp, void *extra, int(*func)
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER)
 	{
-		return -1;
+		// If accessing non-standard frames or a garbage EBP (very common with 32-bit Golang 
+		// binaries) causes an exception, we return the already-evaluated 'ret' value (which is 0 
+		// if the immediate caller of the API was verified to be outside Capemon's DLL). This 
+		// prevents the hooking engine from misclassifying the exception as a recursive call (-1), 
+		// successfully enabling logging for 32-bit Go binary API calls.
+		return ret;
 	}
 }
 #endif
